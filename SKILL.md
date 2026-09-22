@@ -83,7 +83,7 @@ Dispatch one `/review` invocation per PR, in parallel, using `compose`:
 **For each review result, extract:**
 - The `Decision: MERGE / DO NOT MERGE` verdict line
 - The blocking findings count and severity breakdown
-- The full findings list
+- The full findings list (including non-blocking advisory/low/nit findings)
 
 ### Wave 1.5 — Triage Gate (inline, no dispatch)
 
@@ -111,7 +111,8 @@ Present the triage table to the operator:
 ### Proposed actions:
 - **Merge:** #101, #103 (sequential, CI-gated)
 - **Fix:** #102 (dispatch /fix-pr --no-push, review diff before push)
-- **Issue:** #104 (create tracking issue with findings)
+- **Issue (FOLLOW-UP):** #104 (create tracking issue with findings)
+- **Issue (advisory):** #101 has 2 low findings, #103 has 1 nit — track after merge
 
 Awaiting your approval to proceed. Reply with:
 - "go" or "yes" — execute all proposed actions
@@ -199,6 +200,42 @@ Create these issues? (y/n/edit)
 
 On approval: `gh issue create --title "..." --body-file <tmpfile>` for each.
 
+#### 2D — Track Advisory Findings from Merged GREEN PRs
+
+After merging GREEN PRs (Wave 2A), create tracking issues for any non-blocking
+findings (low, advisory, nit) that the review surfaced. These findings were not
+severe enough to block merge but represent real improvement opportunities that
+will otherwise be lost in the triage session transcript.
+
+**Skip when:** a GREEN PR's review had zero non-blocking findings (truly clean).
+
+For each GREEN PR with non-blocking findings, draft a GitHub issue:
+- **Title:** `review: advisory findings from #<N> — <PR title summary>`
+- **Body:** the non-blocking findings list (severity, file/line, description,
+  suggestion), the merged PR link, and a note that these were reviewed and
+  accepted at merge time.
+- **Labels:** if the repo has a `review-followup` or `tech-debt` label, apply it.
+
+Batch-present all drafted issues to the operator for approval (same gate as 2C):
+
+```
+## Advisory Follow-ups from Merged PRs
+
+### Issue for PR #101 — Fix auth timeout
+**Title:** review: advisory findings from #101 — fix auth timeout
+**Findings:** 2 low (missing null check in fallback path, stale comment)
+
+### Issue for PR #103 — Bump deps
+**Title:** review: advisory findings from #103 — bump deps
+**Findings:** 1 nit (changelog entry formatting)
+
+Create these issues? (y/n/edit/skip)
+```
+
+On approval: `gh issue create --title "..." --body-file <tmpfile>` for each.
+On "skip": omit without creating. Advisory issues are lower priority than
+FOLLOW-UP issues — the operator may reasonably skip all of them.
+
 ### Wave 3 — Re-review Fixed PRs (conditional)
 
 If any fixes were pushed in Wave 2B AND `--skip-fix` is not set:
@@ -219,7 +256,8 @@ Report Done with a structured summary:
 |--------|-----|--------|
 | Merged | #101, #103 | ✅ |
 | Fixed + pushed | #102 | ✅ (re-review: GREEN) |
-| Issue created | #104 | gh#551 |
+| Issue (follow-up) | #104 | gh#551 |
+| Issue (advisory) | #101, #103 | gh#552, gh#553 |
 | Skipped | — | — |
 | Still blocked | #107 | Needs upstream API change |
 
